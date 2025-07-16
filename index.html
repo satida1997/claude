@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE Login - ดึง User ID</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-btn {
+            background-color: #00C300;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        .login-btn:hover {
+            background-color: #00A300;
+        }
+        .user-info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>LINE Login - ดึง User ID</h2>
+        
+        <div id="loginSection">
+            <p>กดปุ่มด้านล่างเพื่อเข้าสู่ระบบด้วย LINE</p>
+            <button class="login-btn" onclick="lineLogin()">เข้าสู่ระบบด้วย LINE</button>
+        </div>
+
+        <div id="userSection" class="hidden">
+            <h3>ข้อมูลผู้ใช้:</h3>
+            <div class="user-info">
+                <p><strong>User ID:</strong> <span id="userId"></span></p>
+                <p><strong>Display Name:</strong> <span id="displayName"></span></p>
+            </div>
+            <button class="login-btn" onclick="logout()">ออกจากระบบ</button>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <!-- LINE Login SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script>
+        // *** ใส่ Channel ID ของคุณที่นี่ ***
+        const CHANNEL_ID = '2007765380';
+        
+        // เริ่มต้น LINE Login
+        function initLineLogin() {
+            liff.init({
+                liffId: CHANNEL_ID
+            }).then(() => {
+                console.log('LIFF initialized');
+                checkLoginStatus();
+            }).catch((err) => {
+                console.error('LIFF initialization failed', err);
+                showMessage('เกิดข้อผิดพลาดในการเริ่มต้น LINE Login', 'error');
+            });
+        }
+
+        // ตรวจสอบสถานะการเข้าสู่ระบบ
+        function checkLoginStatus() {
+            if (liff.isLoggedIn()) {
+                getUserProfile();
+            } else {
+                showLoginSection();
+            }
+        }
+
+        // แสดงหน้าเข้าสู่ระบบ
+        function showLoginSection() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('userSection').classList.add('hidden');
+        }
+
+        // เข้าสู่ระบบด้วย LINE
+        function lineLogin() {
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            }
+        }
+
+        // ดึงข้อมูลผู้ใช้
+        function getUserProfile() {
+            liff.getProfile().then((profile) => {
+                console.log('User Profile:', profile);
+                
+                // แสดง User ID และ Display Name
+                document.getElementById('userId').textContent = profile.userId;
+                document.getElementById('displayName').textContent = profile.displayName;
+                
+                // ซ่อนปุ่ม Login แสดงข้อมูลผู้ใช้
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('userSection').classList.remove('hidden');
+                
+                // ส่งข้อมูลไปยัง Server (ตัวอย่าง)
+                sendUserDataToServer(profile.userId, profile.displayName);
+                
+                showMessage('เข้าสู่ระบบสำเร็จ!', 'success');
+                
+            }).catch((err) => {
+                console.error('Error getting profile', err);
+                showMessage('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้', 'error');
+            });
+        }
+
+        // ส่งข้อมูลไปยัง Google Sheets
+        function sendUserDataToServer(userId, displayName) {
+            // *** ใส่ Google Apps Script URL ที่นี่ ***
+            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1CVfepbF0KdY_PsoDOMq8qzERk3DFZGc_-NwQybBpBvTp-HaU6NBPLHMa9epUmPSG/exec';
+            
+            const userData = {
+                userId: userId,
+                displayName: displayName,
+                timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
+                date: new Date().toLocaleDateString('th-TH')
+            };
+
+            // ส่งข้อมูลไปยัง Google Sheets ผ่าน Google Apps Script
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('User data saved to Google Sheets:', data);
+                if (data.status === 'success') {
+                    showMessage('บันทึกข้อมูลสำเร็จ!', 'success');
+                } else {
+                    showMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving user data:', error);
+                showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets', 'error');
+            });
+        }
+
+        // ออกจากระบบ
+        function logout() {
+            liff.logout();
+            showLoginSection();
+            showMessage('ออกจากระบบแล้ว', 'success');
+        }
+
+        // แสดงข้อความ
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = type;
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+
+        // เริ่มต้นเมื่อหน้าเว็บโหลดเสร็จ
+        window.onload = function() {
+            initLineLogin();
+        };
+    </script>
+</body>
+</html>

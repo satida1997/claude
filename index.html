@@ -77,19 +77,34 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     
     <script>
-        // *** ใส่ Channel ID ของคุณที่นี่ ***
-        const CHANNEL_ID = '2007765380';
+        // *** ใส่ LIFF ID ของคุณที่นี่ (ไม่ใช่ Channel ID) ***
+        const LIFF_ID = '2007765380-pPP8zZY5';
         
         // เริ่มต้น LINE Login
         function initLineLogin() {
+            // ตรวจสอบว่าอยู่ใน LINE Browser หรือไม่
+            if (typeof liff === 'undefined') {
+                showMessage('กรุณาเปิดลิงก์นี้ผ่าน LINE Browser', 'error');
+                return;
+            }
+
             liff.init({
-                liffId: CHANNEL_ID
+                liffId: LIFF_ID
             }).then(() => {
                 console.log('LIFF initialized');
                 checkLoginStatus();
             }).catch((err) => {
                 console.error('LIFF initialization failed', err);
-                showMessage('เกิดข้อผิดพลาดในการเริ่มต้น LINE Login', 'error');
+                
+                // แสดงข้อความแสดงข้อผิดพลาดที่เข้าใจง่าย
+                let errorMessage = 'เกิดข้อผิดพลาดในการเริ่มต้น LINE Login';
+                if (err.code === 400) {
+                    errorMessage = 'Channel ID ไม่ถูกต้อง กรุณาตรวจสอบ LIFF App';
+                } else if (err.code === 403) {
+                    errorMessage = 'ไม่มีสิทธิ์เข้าถึง กรุณาตรวจสอบการตั้งค่า';
+                }
+                
+                showMessage(errorMessage, 'error');
             });
         }
 
